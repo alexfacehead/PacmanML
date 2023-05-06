@@ -1,47 +1,52 @@
-import gym
-import gym_pacman
+import torch
 import numpy as np
+from environments.pacman_environment import PacmanEnvironment
 from agents.pacman_agent import PacmanAgent
 from agents.ghost_agent import GhostAgent
-from typing import Tuple
 
-def train(num_episodes: int, model_save_path: str = "models/"):
-    env = gym.make("Pacman-v0")
-    state_size = (4, 84, 84)
-    action_size = env.action_space.n
-    num_ghosts = 4
+# Set random seeds for reproducibility
+np.random.seed(42)
+torch.manual_seed(42)
 
-    pacman_agent = PacmanAgent(state_size, action_size)
-    ghost_agents = [GhostAgent(state_size, action_size) for _ in range(num_ghosts)]
+# Initialize the environment and agents
+env = PacmanEnvironment()
+pacman_agent = PacmanAgent(state_size=(84, 84), action_size=env.action_space.n, device="cuda" if torch.cuda.is_available() else "cpu")
+ghost_agents = [GhostAgent() for _ in range(4)]
 
-    for episode in range(num_episodes):
-        state = env.reset()
-        state = preprocess_state(state)
-        done = False
+# Set training parameters
+num_episodes = 1000
+update_target_every = 100
 
-        while not done:
-            pacman_action = pacman_agent.choose_action(state)
-            ghost_actions = [ghost_agent.choose_action(state) for ghost_agent in ghost_agents]
+# Training loop
+for episode in range(num_episodes):
+    state = env.reset()
+    done = False
+    episode_reward = 0
 
-            next_state, rewards, done, _ = env.step(pacman_action, ghost_actions)
-            next_state = preprocess_state(next_state)
+    while not done:
+        # Pacman chooses an action
+        pacman_action = pacman_agent.choose_action(state)
 
-            pacman_reward, ghost_rewards = rewards
-            pacman_agent.learn(state, pacman_action, pacman_reward, next_state, done)
-            for i, ghost_agent in enumerate(ghost_agents):
-                ghost_agent.learn(state, ghost_actions[i], ghost_rewards[i], next_state, done)
+        # Ghosts choose their actions
+        ghost_actions = [ghost_agent.choose_action(state) for ghost_agent in ghost_agents]
 
-            state = next_state
+        # Perform the actions in the environment
+        next_state, reward, done, _ = env.step(pacman_action, ghost_actions)
 
-        if episode % 10 == 0:
-            pacman_agent.update_target_model()
-            for ghost_agent in ghost_agents:
-                ghost_agent.update_target_model()
+        # Pacman learns from the experience
+        pacman_agent.learn(state, pacman_action, reward, next_state, done)
 
-    pacman_agent.model.save(model_save_path + "pacman_model.pth")
-    for i, ghost_agent in enumerate(ghost_agents):
-        ghost_agent.model.save(model_save_path + f"ghost_model_{i}.pth")
+        # Ghosts learn from the experience
+        for ghost_agent in ghost_agents:
+            ghost_agent.learn(state, pacman_action, reward, next_state, done)
 
-def preprocess_state(state: np.ndarray) -> np.ndarray:
-    # Preprocess the state as needed, e.g., grayscale, resize, normalize, etc.
-    pass
+        state = next_state
+        episode_reward += reward
+
+    # Update the target model for Pacman
+    if episode % update_target_every == 0:
+        pacman_agent.update_target_model()
+
+    print(f"Episode {episode}: Reward = {episode_reward}")
+
+env.close()

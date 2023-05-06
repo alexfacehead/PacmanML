@@ -8,21 +8,23 @@ from models.pacman_model import PacmanModel
 from models.ghost_model import GhostModel
 import gym
 import os
+import torch
 
 def load_models(model_dir):
     pacman_model = PacmanModel()
     ghost_model = GhostModel()
 
     pacman_model_path = os.path.join(model_dir, 'pacman_model.pth')
-    ghost_model_path = os.path.join(model_dir, 'ghost_model.pth')
+    ghost_model_paths = [os.path.join(model_dir, f'ghost_model_{i}.pth') for i in range(4)]
 
     if os.path.exists(pacman_model_path):
         pacman_model.load_state_dict(torch.load(pacman_model_path))
         print("Pacman model loaded.")
 
-    if os.path.exists(ghost_model_path):
-        ghost_model.load_state_dict(torch.load(ghost_model_path))
-        print("Ghost model loaded.")
+    for i, ghost_model_path in enumerate(ghost_model_paths):
+        if os.path.exists(ghost_model_path):
+            ghost_model.load_state_dict(torch.load(ghost_model_path))
+            print(f"Ghost model {i} loaded.")
 
     return pacman_model, ghost_model
 
@@ -34,11 +36,13 @@ def main(args):
     pacman_model, ghost_model = load_models(args.model_dir)
 
     # Create the Pacman and Ghost agents
-    pacman_agent = PacmanAgent(pacman_model)
-    ghost_agents = [GhostAgent(ghost_model) for _ in range(4)]
+    state_size = env.observation_space.shape
+    action_size = env.action_space.n
+    pacman_agent = PacmanAgent(state_size, action_size, model=pacman_model)
+    ghost_agents = [GhostAgent(state_size, action_size, model=ghost_model) for _ in range(4)]
 
     if args.mode == 'train':
-        train(env, pacman_agent, ghost_agents, args.num_episodes, args.save_interval, args.model_dir)
+        train(args.num_episodes, args.model_dir)
     elif args.mode == 'evaluate':
         evaluate(env, pacman_agent, ghost_agents, args.num_episodes, args.model_dir)
     else:

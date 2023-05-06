@@ -1,13 +1,15 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.optim as optim
 import random
 from models.ghost_model import GhostModel
 from utils.replay_buffer import ReplayBuffer
 from typing import Tuple
 
 class GhostAgent:
-    def __init__(self, state_size: Tuple[int, int], action_size: int, hidden_size: int = 128, batch_size: int = 64, learning_rate: float = 0.001, gamma: float = 0.99, epsilon: float = 1.0, epsilon_decay: float = 0.995, epsilon_min: float = 0.01, buffer_size: int = 10000, device: str = "cpu"):
+    # Add num_stacked_frames parameter to the constructor
+    def __init__(self, state_size: Tuple[int, int], action_size: int, hidden_size: int = 128, batch_size: int = 64, learning_rate: float = 0.001, gamma: float = 0.99, epsilon: float = 1.0, epsilon_decay: float = 0.995, epsilon_min: float = 0.01, buffer_size: int = 10000, device: str = "cpu", num_stacked_frames: int = 4):
         self.state_size = state_size
         self.action_size = action_size
         self.hidden_size = hidden_size
@@ -19,6 +21,8 @@ class GhostAgent:
         self.epsilon_min = epsilon_min
         self.buffer_size = buffer_size
         self.device = device
+        self.stacked_frames = deque(maxlen=num_stacked_frames)
+        self.num_stacked_frames = num_stacked_frames
 
         self.model = GhostModel(state_size, action_size, hidden_size).to(device)
         self.target_model = GhostModel(state_size, action_size, hidden_size).to(device)
@@ -29,6 +33,7 @@ class GhostAgent:
         self.replay_buffer = ReplayBuffer(buffer_size)
 
     def choose_action(self, state: np.ndarray) -> int:
+        state = self.preprocess_state(state)
         if random.random() < self.epsilon:
             return random.randint(0, self.action_size - 1)
         else:
@@ -63,3 +68,10 @@ class GhostAgent:
 
     def update_target_model(self):
         self.target_model.load_state_dict(self.model.state_dict())
+
+    def preprocess_state(self, state: np.ndarray) -> np.ndarray:
+        img = Image.fromarray(state)
+        img = img.convert("L")  # Convert to grayscale
+        img = img.resize((84, 84))  # Resize to 84x84
+        processed_state = np.array(img, dtype=np.float32) / 255.0  # Normalize pixel values
+        return processed_state
