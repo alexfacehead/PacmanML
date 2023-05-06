@@ -1,7 +1,7 @@
 import pygame
 from typing import Tuple, List
 from core.pellet import Pellet, PowerPellet
-from core.pacman import Pacman
+from utils.constants import *
 
 class Level:
     def __init__(self, level_file: str):
@@ -38,28 +38,11 @@ class Level:
         for y, row in enumerate(self.grid):
             for x, cell in enumerate(row):
                 if cell == '#':
-                    pygame.draw.rect(screen, (0, 0, 255), (x * 32, y * 32, 32, 32))
+                    pygame.draw.rect(screen, (0, 0, 255), (x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE))
                 elif cell == '.':
-                    pygame.draw.circle(screen, (255, 255, 0), (x * 32 + 16, y * 32 + 16), 4)
+                    pygame.draw.circle(screen, (255, 255, 0), (x * GRID_SIZE + 16, y * GRID_SIZE + 16), 4)
                 elif cell == 'o':
-                    pygame.draw.circle(screen, (255, 255, 0), (x * 32 + 16, y * 32 + 16), 8)
-
-    def check_pellet_collision(self, pacman: Pacman) -> None:
-        for pellet in self.pellets:
-            if pacman.check_collision(pellet):
-                self.handle_pellet_collision(pacman, pellet)
-
-        for power_pellet in self.power_pellets:
-            if pacman.check_collision(power_pellet):
-                self.handle_power_pellet_collision(pacman, power_pellet)
-
-    def handle_pellet_collision(self, pacman: Pacman, pellet: Pellet) -> None:
-        self.pellets.remove(pellet)
-        pacman.eat_pellet(pellet)
-
-    def handle_power_pellet_collision(self, pacman: Pacman, power_pellet: PowerPellet) -> None:
-        self.power_pellets.remove(power_pellet)
-        pacman.eat_power_pellet(power_pellet)
+                    pygame.draw.circle(screen, (255, 255, 0), (x * GRID_SIZE + 16, y * GRID_SIZE + 16), 8)
 
     def is_wall(self, x: int, y: int) -> bool:
         return self.grid[y][x] == "#"

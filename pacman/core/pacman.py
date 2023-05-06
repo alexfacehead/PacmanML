@@ -1,12 +1,13 @@
 import pygame
 from typing import Tuple
 from core.level import Level
-from core.ghost import Ghost
-from core.pellet import Pellet
+from core.pellet import Pellet, PowerPellet
 from utils.constants import *
+from core.character import Character
 
-class Pacman:
+class Pacman(Character):
     def __init__(self, start_position: Tuple[int, int]):
+        super().__init__(start_position, PACMAN_SPEED)  # Pass PACMAN_SPEED to the Character class constructor
         self.start_position = start_position
         self.position = start_position
         self.direction = None
@@ -38,20 +39,21 @@ class Pacman:
                 self.position = next_position
 
         self.update_power_up_state()
+        self.check_pellet_collision(level)
 
     def draw(self, screen: pygame.Surface) -> None:
         pygame.draw.circle(screen, (255, 255, 0), (self.position[0] * 32 + 16, self.position[1] * 32 + 16), 16)
 
-    def check_collision(self, ghost: Ghost) -> bool:
-        return self.position == ghost.position
+    def check_collision(self, obj) -> bool:
+        return self.position == obj.position
 
     def get_next_position(self, direction: Tuple[int, int]) -> Tuple[int, int]:
         x, y = self.position
         dx, dy = direction
         return x + dx, y + dy
 
-    def eat_pellet(self, pellet: Pellet) -> None:
-        if pellet.is_power_up:
+    def eat_pellet(self, level: Level, pellet: Pellet) -> None:
+        if isinstance(pellet, PowerPellet):
             self.powered_up = True
             self.power_up_timer = 200  # Adjust the timer based on your game's requirements
 
@@ -69,3 +71,20 @@ class Pacman:
     
     def lose_life(self) -> None:
         self.lives -= 1
+
+    def check_pellet_collision(self, level: Level) -> None:
+        for pellet in level.pellets:
+            if self.check_collision(pellet):
+                self.handle_pellet_collision(level, pellet)
+
+        for power_pellet in level.power_pellets:
+            if self.check_collision(power_pellet):
+                self.handle_power_pellet_collision(level, power_pellet)
+
+    def handle_pellet_collision(self, level: Level, pellet: Pellet) -> None:
+        level.pellets.remove(pellet)
+        self.eat_pellet(level, pellet)
+
+    def handle_power_pellet_collision(self, level: Level, power_pellet: PowerPellet) -> None:
+        level.power_pellets.remove(power_pellet)
+        self.eat_pellet(level, power_pellet)

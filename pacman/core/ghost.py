@@ -1,16 +1,35 @@
 import pygame
 from typing import Tuple
 from core.level import Level
-from core.pacman import Pacman
 from random import choice
+from core.character import Character
+from core.pacman import Pacman
+from utils.constants import *
 
-class Ghost:
+class Ghost(Character):
     def __init__(self, start_position: Tuple[int, int]):
-        self.position = start_position
+        super().__init__(start_position, GHOST_SPEED)
+        self.start_position = start_position
         self.direction = None
         self.target = None
 
-    def update(self, level: Level, pacman: Pacman) -> None:
+    def reset_position(self) -> None:
+        """Resets the ghost's position to its starting position."""
+        self.position = self.start_position
+    
+    def set_frightened(self, frightened: bool) -> None:
+        """Sets the ghost's frightened state."""
+        self.frightened = frightened
+    
+    def set_scatter(self, scatter: bool) -> None:
+        """Sets the ghost's scatter state."""
+        self.scatter = scatter
+    
+    def set_chase(self, chase: bool) -> None:
+        """Sets the ghost's chase state."""
+        self.chase = chase
+
+    def update(self, level: Level, pacman: Character) -> None:
         self.update_ai_state()
         next_position = self.calculate_next_position(level, pacman)
         self.position = next_position
