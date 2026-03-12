@@ -149,8 +149,7 @@ class PacmanAgent:
 
         self.optimizer.zero_grad()
         loss.backward()
-        # Gradient clipping for stability
-        nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=10.0)
+        nn.utils.clip_grad_value_(self.model.parameters(), clip_value=10.0)
         self.optimizer.step()
 
         # Decay epsilon
@@ -161,7 +160,9 @@ class PacmanAgent:
         if self.steps % self.target_update_freq == 0:
             self.target_model.load_state_dict(self.model.state_dict())
 
-        return loss.item()
+        # Defer .item() to avoid MPS→CPU sync; store on tensor
+        self._last_loss = loss.detach()
+        return self._last_loss.item()
 
     # ------------------------------------------------------------------
     # Persistence

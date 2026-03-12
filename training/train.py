@@ -227,14 +227,15 @@ def train(
             ghost_agent.store_transition(state, ghost_actions, ghost_reward,
                                          next_state, done)
 
-            # Train
-            loss_p = pacman_agent.train_step()
-            loss_g = ghost_agent.train_step()
+            # Train every 4 steps (reduces GPU overhead by ~4x)
+            if ep_steps % 4 == 0:
+                loss_p = pacman_agent.train_step()
+                loss_g = ghost_agent.train_step()
 
-            if loss_p is not None:
-                recent_losses_pac.append(loss_p)
-            if loss_g is not None:
-                recent_losses_ghost.append(loss_g)
+                if loss_p is not None:
+                    recent_losses_pac.append(loss_p)
+                if loss_g is not None:
+                    recent_losses_ghost.append(loss_g)
 
             ep_pac_reward += pac_reward
             ep_ghost_reward += ghost_reward
@@ -291,7 +292,7 @@ def train(
                   f"Best {best_score} | "
                   f"Pac W {pac_wins} / Ghost W {ghost_wins} / TO {timeouts} | "
                   f"Avg Pac R {np.mean(last_50_pac):.1f} | "
-                  f"Buffer {len(pacman_agent.replay_buffer):,} ---")
+                  f"Buffer {len(pacman_agent.buffer):,} ---")
             print()
 
         # Save checkpoints periodically
